@@ -1,0 +1,68 @@
+.TH XREF_FUNCTION_USAGE 1 "June 2024" "1.0" "Function cross-reference tool"
+.SH NAME
+xref_function_usage \- cross-reference function usage in a codebase
+.SH SYNOPSIS
+.B xref_function_usage.sh
+\-f file
+[\-p path]
+[\-u]
+[\-x exclude-path ...]
+[\-X exclude-name ...]
+[\-h]
+.SH DESCRIPTION
+This script extracts all function definitions from a file, then scans a directory
+tree for all usages of those functions.
+
+.SH OPTIONS
+.TP
+.B \-f file
+Source file to extract functions from (required).
+.TP
+.B \-p path
+Directory to scan for usages (default: .).
+.TP
+.B \-u
+Only print functions that are UNUSED.
+.TP
+.B \-x exclude-path
+Exclude all files and folders whose path starts with this value.
+Can be repeated. Accepts absolute or relative paths.
+.TP
+.B \-X exclude-name
+Exclude all files or directories whose name matches this string.
+Wildcards supported, e.g. '*.min.js', 'old*', 'node_modules'.
+.TP
+.B \-h
+Show help and exit.
+
+.SH EXAMPLES
+.B
+  xref_function_usage.sh -f mylib.php
+.P
+Scan the current tree for all usages of functions defined in mylib.php.
+.P
+.B
+  xref_function_usage.sh -f mylib.php -p ./src -X old -X .git
+.P
+Scan only ./src, skipping all 'old' or '.git' folders everywhere.
+.P
+.B
+  xref_function_usage.sh -f foo.js -x ./legacy -x /tmp/bar
+.P
+Exclude any path starting with ./legacy or /tmp/bar.
+.P
+.B
+  xref_function_usage.sh -f lib.py -u
+.P
+Show only unused functions.
+
+.SH NOTES
+- Supports PHP, JavaScript, Python, C (basic regex-based detection).
+- Output lines are trimmed for terminal display.
+- Exclusion with -X applies by name, -x by path.
+.SH AUTHOR
+OpenAI Code GPT, tweaked by you.
+.SH SEE ALSO
+.BR grep (1),
+.BR find (1)
+
