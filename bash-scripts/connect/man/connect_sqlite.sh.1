@@ -1,0 +1,87 @@
+.TH CONNECT_SQLITE.SH 1 "June 2025" "1.0" "SQLite Query Helper"
+.SH NAME
+connect_sqlite.sh \- Friendly Bash wrapper for SQLite queries and database inspection
+.SH SYNOPSIS
+.B connect_sqlite.sh
+[\fISQL statement or meta-command\fR]
+.SH DESCRIPTION
+.B connect_sqlite.sh
+is a command-line utility to run SQL queries and SQLite meta-commands, and provides helpful shortcuts for schema inspection and database management. If no arguments are given, it launches the interactive SQLite shell.
+
+It adds semicolons to SQL statements when needed, supports describe helpers for quick schema introspection, and displays usage help.
+.SH OPTIONS
+.TP
+.B \-h
+Show basic usage help.
+
+.TP
+.B \-help
+Show detailed usage help and command examples.
+
+.SH EXAMPLES
+.TP
+List all tables:
+.B
+connect_sqlite.sh .tables
+.TP
+Run a SQL query:
+.B
+connect_sqlite.sh "SELECT * FROM mytable"
+.TP
+Show table structure:
+.B
+connect_sqlite.sh describe .table mytable
+.TP
+Show indexes for a table:
+.B
+connect_sqlite.sh describe .indexes mytable
+.TP
+Show foreign keys for a table:
+.B
+connect_sqlite.sh describe .fkeys mytable
+.TP
+Show database schema version:
+.B
+connect_sqlite.sh describe .schema_version
+.TP
+Run an integrity check:
+.B
+connect_sqlite.sh describe .integrity_check
+.TP
+Show help:
+.B
+connect_sqlite.sh -h
+.TP
+Enter interactive SQLite shell (no arguments):
+.B
+connect_sqlite.sh
+
+.SH "DESCRIBE HELPERS"
+The
+.B describe
+shortcuts provide convenient ways to inspect table structure and database metadata:
+.TP
+.B describe .table TABLENAME
+Show columns and types for TABLENAME.
+.TP
+.B describe .indexes TABLENAME
+Show indexes for TABLENAME.
+.TP
+.B describe .fkeys TABLENAME
+Show foreign key constraints for TABLENAME.
+.TP
+.B describe .schema_version
+Show the database schema version.
+.TP
+.B describe .integrity_check
+Run the SQLite integrity check.
+
+.SH FILES
+The script expects a database file path (e.g., \fB../data/f1db.db\fR) to be set in its configuration or within the script.
+
+.SH AUTHOR
+Written by \fBRick Ruggiero\fR <rick.ruggiero@gmail.com>
+
+.SH "SEE ALSO"
+.BR sqlite3 (1)
+

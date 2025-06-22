@@ -1,0 +1,355 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	2025.06.21.23.17.39;	author rick;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2025.06.21.22.45.14;	author rick;	state Exp;
+branches;
+next	;
+
+
+desc
+@This script is used to send specific commands to the sqlite3 database.
+@
+
+
+1.2
+log
+@Added support for some basic error detection and improved help messages.
+@
+text
+@#!/bin/bash
+#
+# vim: ts=4 ai
+# $Id$
+#
+DB="../data/f1db.db"
+PROGNAME=$(basename "$0")
+ERRLOG="./sqlite3_error.log"
+
+PROGNAME=$(basename "$0")
+
+usage() {
+    cat <<EOF
+Usage: ${PROGNAME} [SQL statement or meta-command]
+Examples:
+  ${PROGNAME} .tables
+  ${PROGNAME} SELECT * FROM mytable
+  ${PROGNAME} describe .table mytable
+  ${PROGNAME} describe .indexes mytable
+  ${PROGNAME} describe .fkeys mytable
+  ${PROGNAME} describe .schema_version
+  ${PROGNAME} describe .integrity_check
+  ${PROGNAME} -h         Show this usage message
+  ${PROGNAME} -help      More detailed usage help
+  ${PROGNAME} --help     More detailed usage help
+EOF
+    exit 0
+}
+
+longUsage() {
+    cat <<EOF
+Usage:   ${PROGNAME} [SQL statement or meta-command]
+------------------------------------------------------
+Examples:
+  ${PROGNAME} .tables
+      - List all tables in the database
+
+  ${PROGNAME} SELECT * FROM mytable
+      - Run an SQL query and show results
+
+  ${PROGNAME} describe .table mytable
+      - Show table columns/structure for 'mytable'
+
+  ${PROGNAME} describe .indexes mytable
+      - Show indexes for 'mytable'
+
+  ${PROGNAME} describe .fkeys mytable
+      - Show foreign keys for 'mytable'
+
+  ${PROGNAME} describe .schema_version
+      - Show database schema version
+
+  ${PROGNAME} describe .integrity_check
+      - Run SQLite integrity check
+
+  ${PROGNAME} -h
+      - Show this help message
+
+  ${PROGNAME} -help, --help
+      - Show more detailed help message
+
+Notes:
+  * Arguments starting with '.' (like .tables) are passed directly to sqlite3.
+  * SQL statements without a trailing semicolon are auto-appended one.
+  * For 'describe' helpers, tablename is required except for .schema_version and .integrity_check.
+
+EOF
+    exit 0
+}
+
+# Check help switches up top
+case "$1" in
+    -h)    usage ;;
+    -help|--help) longUsage ;;
+esac
+
+describe() {
+    case "$1" in
+        .table)
+            if [ -z "$2" ]; then
+                echo -e "\e[91mERROR: No table specified for describe .table\e[0m" >&2
+                exit 2
+            fi
+            echo "PRAGMA table_info($2);"
+            ;;
+        .indexes)
+            if [ -z "$2" ]; then
+                echo -e "\e[91mERROR: No table specified for describe .indexes\e[0m" >&2
+                exit 2
+            fi
+            echo "PRAGMA index_list($2);"
+            ;;
+        .fkeys)
+            if [ -z "$2" ]; then
+                echo -e "\e[91mERROR: No table specified for describe .fkeys\e[0m" >&2
+                exit 2
+            fi
+            echo "PRAGMA foreign_key_list($2);"
+            ;;
+        .schema_version)
+            echo "PRAGMA schema_version;"
+            ;;
+        .integrity_check)
+            echo "PRAGMA integrity_check;"
+            ;;
+        .tables)
+            echo ".tables"
+            ;;
+        *)
+            echo -e "\e[91mERROR: Unknown describe command: $1\e[0m" >&2
+            usage
+            ;;
+    esac
+}
+
+if [[ $# -eq 0 ]]; then
+	echo -e "${PROGNAME}: calling sqlite3..."
+	sqlite3 "$DB"
+	echo -e "${PROGNAME}: exiting.\n"
+    exit 0
+fi
+
+args=("$@@")
+
+if [[ "${args[0]}" == "describe" ]]; then
+    if [[ -z "${args[1]}" ]]; then
+        echo -e "\e[91mERROR: No describe sub-command specified.\e[0m" >&2
+        usage
+    fi
+    # Special: describe .tables → just run .tables directly
+    if [[ "${args[1]}" == ".tables" ]]; then
+        sqlite3 "$DB" ".tables"
+        exit $?
+    fi
+    # Compose PRAGMA/meta-command
+    desc_cmd=$(describe "${args[1]}" "${args[2]}")
+    if [[ "${args[1]}" == .* ]]; then
+        sqlite3 "$DB" "$desc_cmd"
+    else
+        output=$(sqlite3 "$DB" 2>"$ERRLOG" <<EOF
+.headers on
+.mode column
+$desc_cmd
+EOF
+        )
+        exitcode=$?
+        if [[ $exitcode -ne 0 ]]; then
+            echo -e "\e[91mSQLite error occurred:\e[0m"
+            cat "$ERRLOG"
+            echo -e "\e[93mTip:\e[0m There was a problem with your describe command. Check your arguments or table name."
+            exit $exitcode
+        else
+            echo "$output"
+        fi
+    fi
+    exit 0
+fi
+
+if [[ "${args[0]}" == .* ]]; then
+    sqlite3 "$DB" "${args[@@]}"
+    exit $?
+fi
+
+sql_cmd="$*"
+[[ "$sql_cmd" != *\; ]] && sql_cmd="${sql_cmd};"
+
+output=$(sqlite3 "$DB" 2>"$ERRLOG" <<EOF
+.headers on
+.mode column
+$sql_cmd
+EOF
+)
+exitcode=$?
+if [[ $exitcode -ne 0 ]]; then
+    echo -e "\e[91mSQLite error occurred:\e[0m"
+    cat "$ERRLOG"
+    # Only suggest for SQL commands (not for meta-commands)
+    if echo "$output" | grep -qi "no such table"; then
+        echo -e "\e[93mTip:\e[0m The table you referenced does not exist. Use '.tables' to see available tables."
+    elif echo "$output" | grep -qi "syntax error"; then
+        echo -e "\e[93mTip:\e[0m There is a syntax error in your SQL. Double-check your command."
+    fi
+    exit $exitcode
+else
+    echo "$output"
+fi
+
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d2 8
+a10 1
+DB="../data/f1db.db"
+d12 14
+a25 7
+# Function to run sqlite3 with custom SQL or dot-command
+run_sqlite() {
+    local cmd="$1"
+    sqlite3 "$DB" <<EOF
+.headers on
+.mode column
+$cmd
+d27 1
+d30 1
+a30 2
+# Usage/help message
+usage() {
+d32 5
+a36 1
+Usage: ${PROGNAME} [SQL or .command or describe ALIAS [TABLENAME]]
+d38 11
+a48 8
+  ${PROGNAME} .tables
+  ${PROGNAME} describe .table TABLENAME      # PRAGMA table_info(TABLENAME)
+  ${PROGNAME} describe .indexes TABLENAME    # PRAGMA index_list(TABLENAME)
+  ${PROGNAME} describe .fkeys TABLENAME      # PRAGMA foreign_key_list(TABLENAME)
+  ${PROGNAME} describe .schema_version       # PRAGMA schema_version;
+  ${PROGNAME} describe .integrity_check      # PRAGMA integrity_check;
+  ${PROGNAME} describe .tables               # Alias for '.tables'
+  ${PROGNAME} "SELECT * FROM mytable;"       # Normal SQL query
+d50 2
+a51 1
+If you enter SQL and it does not end with a semicolon, one will be added automatically.
+d53 2
+a54 2
+EOF
+}
+d56 2
+a57 7
+# No arguments: open interactive sqlite3
+if [[ $# -lt 1 ]]; then
+    usage
+    echo "No command provided. Entering interactive sqlite3 shell."
+    sqlite3 "$DB"
+    exit 0
+fi
+d59 2
+a60 1
+args="$*"
+d62 4
+a65 6
+# Trap "describe .tables", "describe .schema", etc. to run as dot-command
+if [[ "$args" =~ ^describe[[:space:]]+(\..+)$ ]]; then
+    dotcmd="${BASH_REMATCH[1]}"
+    run_sqlite "$dotcmd"
+    exit 0
+fi
+d67 1
+a67 9
+# describe .table TABLENAME => PRAGMA table_info(TABLENAME)
+if [[ "$args" == describe\ .table* ]]; then
+    tbl="${args#describe .table }"
+    if [[ -z "$tbl" || "$tbl" == "describe .table" ]]; then
+        echo "ERROR: No table name provided for '.table'."
+        echo "Usage: ${PROGNAME} describe .table TABLENAME"
+        exit 1
+    fi
+    run_sqlite "PRAGMA table_info($tbl);"
+d69 1
+a69 1
+fi
+d71 44
+a114 11
+# describe .indexes TABLENAME => PRAGMA index_list(TABLENAME)
+if [[ "$args" == describe\ .indexes* ]]; then
+    tbl="${args#describe .indexes }"
+    if [[ -z "$tbl" || "$tbl" == "describe .indexes" ]]; then
+        echo "ERROR: No table name provided for '.indexes'."
+        echo "Usage: ${PROGNAME} describe .indexes TABLENAME"
+        exit 1
+    fi
+    run_sqlite "PRAGMA index_list($tbl);"
+    exit 0
+fi
+d116 4
+a119 9
+# describe .fkeys TABLENAME => PRAGMA foreign_key_list(TABLENAME)
+if [[ "$args" == describe\ .fkeys* ]]; then
+    tbl="${args#describe .fkeys }"
+    if [[ -z "$tbl" || "$tbl" == "describe .fkeys" ]]; then
+        echo "ERROR: No table name provided for '.fkeys'."
+        echo "Usage: ${PROGNAME} describe .fkeys TABLENAME"
+        exit 1
+    fi
+    run_sqlite "PRAGMA foreign_key_list($tbl);"
+d123 1
+a123 5
+# describe .schema_version => PRAGMA schema_version;
+if [[ "$args" == describe\ .schema_version* ]]; then
+    run_sqlite "PRAGMA schema_version;"
+    exit 0
+fi
+d125 31
+a155 3
+# describe .integrity_check => PRAGMA integrity_check;
+if [[ "$args" == describe\ .integrity_check* ]]; then
+    run_sqlite "PRAGMA integrity_check;"
+d159 3
+a161 4
+# Help message
+if [[ "$args" == "--help" || "$args" == "-h" ]]; then
+    usage
+    exit 0
+d164 2
+a165 5
+# If input starts with dot, run directly as a dot-command
+if [[ "$args" == .* ]]; then
+    run_sqlite "$args"
+    exit 0
+fi
+d167 17
+a183 3
+# Add trailing semicolon if missing, but only for SQL (not dot-commands)
+if [[ "$args" == *\; ]]; then
+    cmd="$args"
+d185 1
+a185 1
+    cmd="${args};"
+a186 2
+
+run_sqlite "$cmd"
+@
