@@ -17,6 +17,9 @@ This repository contains a set of tools built to:
 - **xref_function_usage.sh**
   Scan your codebase for function definitions and usages. Supports PHP, JavaScript, Python, and C, with flexible include/exclude rules.
 
+- **connect_sqlite.sh**
+  A command-line Bash script for easily running queries and meta-commands against an SQLite database. Supports common queries, direct SQLite meta-commands, and helpful “describe” shortcuts for table structure and more.
+
 
 ## Getting Started
 
